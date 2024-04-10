@@ -14,8 +14,13 @@ class SentimentAnalysis(Resource):
         reviews_data = request.get_json()
 
         grouped_reviews = {}
+        total_rating = 0
+        rating_counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
         for review in reviews_data:
-            text = review.get('text', '')
+            text = review.get('comment', '')
+            rating = review.get('rating', 0)
+            date = review.get('date', '')
             sentiment_scores = sia.polarity_scores(text)
             length = len(text.split())
 
@@ -30,10 +35,16 @@ class SentimentAnalysis(Resource):
 
             if group not in grouped_reviews:
                 grouped_reviews[group] = []
-            grouped_reviews[group].append({'text': text, 'sentiment': group, 'buy': buy})
+            grouped_reviews[group].append({'text': text, 'sentiment': group, 'buy': buy, 'rating': rating, 'date': date})
+
+            total_rating += rating
+            rating_counts[rating] += 1
 
         positive_reviews = [review for review in grouped_reviews.get('Positive', []) if review['buy']]
         positive_percentage = len(positive_reviews) / len(reviews_data) * 100
+
+        average_rating = total_rating / len(reviews_data) if len(reviews_data) > 0 else 0
+        rating_percentages = {rating: count / sum(rating_counts.values()) * 100 for rating, count in rating_counts.items()}
 
         overall_recommendation = (
             'Based on the overwhelmingly positive reviews, I highly recommend purchasing this product.'
@@ -44,6 +55,8 @@ class SentimentAnalysis(Resource):
         return {
             'grouped_reviews': grouped_reviews,
             'positive_percentage': positive_percentage,
+            'average_rating': average_rating,
+            'rating_percentages': rating_percentages,
             'overall_recommendation': overall_recommendation
         }
 
